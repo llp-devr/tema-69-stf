@@ -1,0 +1,11 @@
+[package]
+name = "tema-69-stf"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+encoding_rs = "0.8.32"
+encoding_rs_io = "0.1.7"
+fltk = { version = "1.4.4", features = ["fltk-bundled"] }
+serde = { version = "1.0.163", features = ["derive"] }
+serde_yaml = "0.9.21"
