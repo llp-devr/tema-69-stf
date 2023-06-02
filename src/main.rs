@@ -2,6 +2,7 @@ use fltk::{app::*, button::*, dialog::*, enums::Font, prelude::*, window::*};
 
 use serde::Serialize;
 
+use fltk::output::MultilineOutput;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
@@ -9,7 +10,6 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::rc::Rc;
-use fltk::output::MultilineOutput;
 
 mod efd_contribuicoes;
 mod efd_icms_ipi;
@@ -221,7 +221,8 @@ fn process_files(console: Rc<RefCell<Console>>, files: Vec<PathBuf>) {
     }
     console.borrow_mut().add_line("\n".to_string());
 
-    let (efd_contribuicoes, m210, m610) = efd_contribuicoes::summarize(files.efd_contribuicoes.unwrap(), efd_icms_ipi.clone());
+    let (efd_contribuicoes, m210, m610) =
+        efd_contribuicoes::summarize(files.efd_contribuicoes.unwrap(), efd_icms_ipi.clone());
 
     console
         .borrow_mut()
@@ -233,49 +234,72 @@ fn process_files(console: Rc<RefCell<Console>>, files: Vec<PathBuf>) {
     } else {
         for (key, value) in efd_contribuicoes.iter() {
             if *value > 0_f64 {
-                console.borrow_mut().add_line(format!(
-                    "- REG: {}; VL_ICMS: {:.2}",
-                    key, value
-                ));
+                console
+                    .borrow_mut()
+                    .add_line(format!("- REG: {}; VL_ICMS: {:.2}", key, value));
             }
         }
     }
     console.borrow_mut().add_line("\n".to_string());
 
-    let vl_icms: f64 = efd_contribuicoes.values().fold(0_f64, |acc, &value| acc + value);
-    let vl_rec_brt: f64 = m210.iter().fold(0_f64, |acc, apuracao| acc + apuracao.vl_rec_brt);
+    let vl_icms: f64 = efd_contribuicoes
+        .values()
+        .fold(0_f64, |acc, &value| acc + value);
+    let vl_rec_brt: f64 = m210
+        .iter()
+        .fold(0_f64, |acc, apuracao| acc + apuracao.vl_rec_brt);
 
     let mut pis: f64 = 0_f64;
     let mut cofins: f64 = 0_f64;
 
-    console.borrow_mut().add_line("Analisando registro M210 (CST 01)...".to_string());
+    console
+        .borrow_mut()
+        .add_line("Analisando registro M210 (CST 01)...".to_string());
     for i in m210 {
         let proporcao = i.vl_rec_brt / vl_rec_brt;
-        console.borrow_mut().add_line(format!("- Base de cálculo original: {:.2}", i.vl_bc_cont));
+        console
+            .borrow_mut()
+            .add_line(format!("- Base de cálculo original: {:.2}", i.vl_bc_cont));
         let icms = vl_icms * proporcao;
-        console.borrow_mut().add_line(format!("  ICMS a ser excluído: {:.2}", icms));
+        console
+            .borrow_mut()
+            .add_line(format!("  ICMS a ser excluído: {:.2}", icms));
         let economia = (icms * i.aliq_cont) / 100_f64;
         pis += economia;
-        console.borrow_mut().add_line(format!("  Economia tributária (PIS): {:.2}", economia));
+        console
+            .borrow_mut()
+            .add_line(format!("  Economia tributária (PIS): {:.2}", economia));
         console.borrow_mut().add_line("\n".to_string());
     }
 
-    console.borrow_mut().add_line("Analisando registro M610 (CST 01)...".to_string());
+    console
+        .borrow_mut()
+        .add_line("Analisando registro M610 (CST 01)...".to_string());
     for i in m610 {
         let proporcao = i.vl_rec_brt / vl_rec_brt;
-        console.borrow_mut().add_line(format!("- Base de cálculo original: {:.2}", i.vl_bc_cont));
+        console
+            .borrow_mut()
+            .add_line(format!("- Base de cálculo original: {:.2}", i.vl_bc_cont));
         let icms = vl_icms * proporcao;
-        console.borrow_mut().add_line(format!("  ICMS a ser excluído: {:.2}", icms));
+        console
+            .borrow_mut()
+            .add_line(format!("  ICMS a ser excluído: {:.2}", icms));
         let economia = (icms * i.aliq_cont) / 100_f64;
         cofins += economia;
-        console.borrow_mut().add_line(format!("  Economia tributária (COFINS): {:.2}", economia));
+        console
+            .borrow_mut()
+            .add_line(format!("  Economia tributária (COFINS): {:.2}", economia));
         console.borrow_mut().add_line("\n".to_string());
     }
 
     console.borrow_mut().add_line("\n".to_string());
-    console.borrow_mut().add_line("Economia tributária total...".to_string());
+    console
+        .borrow_mut()
+        .add_line("Economia tributária total...".to_string());
     console.borrow_mut().add_line(format!("- PIS: {:.2}", pis));
-    console.borrow_mut().add_line(format!("- COFINS: {:.2}", cofins));
+    console
+        .borrow_mut()
+        .add_line(format!("- COFINS: {:.2}", cofins));
 }
 
 fn main() {

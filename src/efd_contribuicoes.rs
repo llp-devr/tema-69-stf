@@ -17,6 +17,11 @@ struct C180Value {
     vl_opr_cfop5102_cst01: f64,
 }
 
+struct C400Value {
+    vl_opr: f64,
+    vl_opr_cst01: f64,
+}
+
 pub struct Apuracao {
     pub(crate) vl_rec_brt: f64,
     pub(crate) vl_bc_cont: f64,
@@ -28,7 +33,10 @@ fn to_f64(input: &Option<&String>) -> f64 {
     replaced.parse::<f64>().unwrap_or(0_f64)
 }
 
-pub(crate) fn summarize(path: PathBuf, efd_icms_ipi: HashMap<(String, String, String), f64>) -> (HashMap<String, f64>, Vec<Apuracao>, Vec<Apuracao>) {
+pub(crate) fn summarize(
+    path: PathBuf,
+    efd_icms_ipi: HashMap<(String, String, String), f64>,
+) -> (HashMap<String, f64>, Vec<Apuracao>, Vec<Apuracao>) {
     let mut summary: HashMap<String, f64> = HashMap::new();
     let mut m210: Vec<Apuracao> = Vec::new();
     let mut m610: Vec<Apuracao> = Vec::new();
@@ -56,8 +64,12 @@ pub(crate) fn summarize(path: PathBuf, efd_icms_ipi: HashMap<(String, String, St
     let mut c180_cod_mod: String = String::new();
     let mut c180_cache: HashMap<(String, String, String), C180Value> = HashMap::new();
 
+    let mut c400_cod_mod: String = String::new();
+    let mut c400_cache: HashMap<(String, String), C400Value> = HashMap::new();
+
     for line in reader.lines() {
         let l = line.unwrap();
+
         let r: Vec<String> = l.split('|').map(|s| s.to_string()).collect();
 
         if let Some(reg) = r.get(1) {
@@ -79,7 +91,9 @@ pub(crate) fn summarize(path: PathBuf, efd_icms_ipi: HashMap<(String, String, St
                         continue;
                     }
 
-                    if (c100_cod_mod != "55" || c010_ind_escri != "1") && *r.get(25).unwrap() == "01" {
+                    if (c100_cod_mod != "55" || c010_ind_escri != "1")
+                        && *r.get(25).unwrap() == "01"
+                    {
                         let vl_icms = to_f64(&r.get(15));
 
                         let value = summary.entry(reg.to_string()).or_insert(0_f64);
@@ -109,8 +123,6 @@ pub(crate) fn summarize(path: PathBuf, efd_icms_ipi: HashMap<(String, String, St
 
                 "C181" => {
                     if c010_ind_escri != "2" || c180_cod_mod == "65" {
-                        println!("{:?}", r);
-
                         if *r.get(3).unwrap() == "5102" {
                             let vl_opr: f64 = to_f64(&r.get(4));
                             let cfop: String = r.get(3).unwrap().to_string();
@@ -132,9 +144,28 @@ pub(crate) fn summarize(path: PathBuf, efd_icms_ipi: HashMap<(String, String, St
                     }
                 }
 
-                "C381" | "C385" | "C481" | "C485" | "C491" | "C495" | "C601" | "C605"
-                | "C870" | "D201" | "D205" | "D300" | "D350" | "D601" | "D605" | "F100"
-                | "F500" | "F550" => {
+                "C400" => c400_cod_mod = r.get(2).unwrap().clone(),
+
+                "C481" => {
+                    if c010_ind_escri != "1" {
+                        let vl_opr: f64 = to_f64(&r.get(3));
+
+                        let key = (c010_cnpj.clone(), c400_cod_mod.clone());
+                        let value = c400_cache.entry(key).or_insert(C400Value {
+                            vl_opr: 0_f64,
+                            vl_opr_cst01: 0_f64,
+                        });
+
+                        value.vl_opr += vl_opr;
+
+                        if *r.get(2).unwrap() == "01" {
+                            value.vl_opr_cst01 += vl_opr;
+                        }
+                    }
+                }
+
+                "C381" | "C385" | "C491" | "C495" | "C601" | "C605" | "C870" | "D201" | "D205"
+                | "D300" | "D350" | "D601" | "D605" | "F100" | "F500" | "F550" => {
                     todo!("Registro {} não implantado", reg)
                 }
 
@@ -185,13 +216,32 @@ pub(crate) fn summarize(path: PathBuf, efd_icms_ipi: HashMap<(String, String, St
         *value += vl_icms;
     }
 
-    if c180_cache.is_empty() {} else {
+    if c180_cache.is_empty() {
+    } else {
         for (key, value) in c180_cache {
-            let vl_icms: f64 = *efd_icms_ipi.get(&key.clone()).unwrap();
+            let vl_icms: f64 = *efd_icms_ipi.get(&key.clone())
+                .expect("Não foram apresentados os respectivos arquivos EFD ICMS/IPI.");
 
             let vl_icms_prop: f64 = vl_icms / value.vl_opr_cfop5102 * value.vl_opr_cfop5102_cst01;
 
             let value = summary.entry("C180".to_string()).or_insert(0_f64);
+            *value += vl_icms_prop;
+        }
+    }
+
+    if c400_cache.is_empty() {
+    } else {
+        for (key, value) in c400_cache {
+            let cnpj = key.0;
+            let cod_mod = key.1;
+
+            let vl_icms: f64 = *efd_icms_ipi
+                .get(&(cnpj, cod_mod, "5102".to_string()))
+                .expect("Não foram apresentados os respectivos arquivos EFD ICMS/IPI.");
+
+            let vl_icms_prop: f64 = vl_icms / value.vl_opr * value.vl_opr_cst01;
+
+            let value = summary.entry("C400".to_string()).or_insert(0_f64);
             *value += vl_icms_prop;
         }
     }
