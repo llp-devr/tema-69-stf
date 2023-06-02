@@ -5,8 +5,6 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
-use std::str::FromStr;
-use serde_yaml::to_string;
 
 struct C175Value {
     vl_icms: f64,
@@ -23,21 +21,19 @@ pub struct Apuracao {
     pub(crate) vl_rec_brt: f64,
     pub(crate) vl_bc_cont: f64,
     pub(crate) aliq_cont: f64,
-    pub(crate) vl_cont_apur: f64,
 }
 
 fn to_f64(input: &Option<&String>) -> f64 {
     let replaced = input.unwrap().replace(',', ".");
-    match replaced.parse::<f64>() {
-        Ok(val) => val,
-        Err(_) => 0.0, // return 0 if parsing fails
-    }
+    replaced.parse::<f64>().unwrap_or(0_f64)
 }
 
 pub(crate) fn summarize(path: PathBuf, efd_icms_ipi: HashMap<(String, String, String), f64>) -> (HashMap<String, f64>, Vec<Apuracao>, Vec<Apuracao>) {
     let mut summary: HashMap<String, f64> = HashMap::new();
     let mut m210: Vec<Apuracao> = Vec::new();
     let mut m610: Vec<Apuracao> = Vec::new();
+
+    println!("{}", &path.display());
 
     let file: File = File::open(&path).unwrap();
 
@@ -83,13 +79,11 @@ pub(crate) fn summarize(path: PathBuf, efd_icms_ipi: HashMap<(String, String, St
                         continue;
                     }
 
-                    if c100_cod_mod != "55" || (c100_cod_mod == "55" && c010_ind_escri != "1") {
-                        if *r.get(25).unwrap() == "01" {
-                            let vl_icms = to_f64(&r.get(15));
+                    if (c100_cod_mod != "55" || c010_ind_escri != "1") && *r.get(25).unwrap() == "01" {
+                        let vl_icms = to_f64(&r.get(15));
 
-                            let value = summary.entry(reg.to_string()).or_insert(0_f64);
-                            *value += vl_icms;
-                        }
+                        let value = summary.entry(reg.to_string()).or_insert(0_f64);
+                        *value += vl_icms;
                     }
                 }
 
@@ -132,8 +126,6 @@ pub(crate) fn summarize(path: PathBuf, efd_icms_ipi: HashMap<(String, String, St
                             if *r.get(2).unwrap() == "01" {
                                 value.vl_opr_cfop5102_cst01 += vl_opr;
                             }
-                        } else if *r.get(3).unwrap() == "5405" {
-                            ()
                         } else {
                             todo!("Invalid {}", r.get(3).unwrap());
                         }
@@ -146,7 +138,6 @@ pub(crate) fn summarize(path: PathBuf, efd_icms_ipi: HashMap<(String, String, St
                     todo!("Registro {} não implantado", reg)
                 }
 
-
                 "M210" => {
                     if *r.get(2).unwrap() == "01" || *r.get(2).unwrap() == "51" {
                         if r.len() == 15 {
@@ -154,14 +145,12 @@ pub(crate) fn summarize(path: PathBuf, efd_icms_ipi: HashMap<(String, String, St
                                 vl_rec_brt: to_f64(&r.get(3)),
                                 vl_bc_cont: to_f64(&r.get(4)),
                                 aliq_cont: to_f64(&r.get(5)),
-                                vl_cont_apur: to_f64(&r.get(8)),
                             })
                         } else {
                             m210.push(Apuracao {
                                 vl_rec_brt: to_f64(&r.get(3)),
                                 vl_bc_cont: to_f64(&r.get(7)),
                                 aliq_cont: to_f64(&r.get(8)),
-                                vl_cont_apur: to_f64(&r.get(11)),
                             })
                         }
                     }
@@ -174,14 +163,12 @@ pub(crate) fn summarize(path: PathBuf, efd_icms_ipi: HashMap<(String, String, St
                                 vl_rec_brt: to_f64(&r.get(3)),
                                 vl_bc_cont: to_f64(&r.get(4)),
                                 aliq_cont: to_f64(&r.get(5)),
-                                vl_cont_apur: to_f64(&r.get(8)),
                             })
                         } else {
                             m610.push(Apuracao {
                                 vl_rec_brt: to_f64(&r.get(3)),
                                 vl_bc_cont: to_f64(&r.get(7)),
                                 aliq_cont: to_f64(&r.get(8)),
-                                vl_cont_apur: to_f64(&r.get(11)),
                             })
                         }
                     }
@@ -198,11 +185,9 @@ pub(crate) fn summarize(path: PathBuf, efd_icms_ipi: HashMap<(String, String, St
         *value += vl_icms;
     }
 
-    if c180_cache.is_empty() {
-        ()
-    } else {
+    if c180_cache.is_empty() {} else {
         for (key, value) in c180_cache {
-            let vl_icms: f64 = efd_icms_ipi.get(&key.clone()).unwrap().clone();
+            let vl_icms: f64 = *efd_icms_ipi.get(&key.clone()).unwrap();
 
             let vl_icms_prop: f64 = vl_icms / value.vl_opr_cfop5102 * value.vl_opr_cfop5102_cst01;
 

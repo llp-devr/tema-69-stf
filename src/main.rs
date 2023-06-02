@@ -1,4 +1,4 @@
-use fltk::{app::*, button::*, dialog::*, enums::Font, input::*, prelude::*, window::*};
+use fltk::{app::*, button::*, dialog::*, enums::Font, prelude::*, window::*};
 
 use serde::Serialize;
 
@@ -21,7 +21,7 @@ struct Console {
 
 impl Console {
     fn new() -> Self {
-        let mut display = MultilineOutput::new(10, 10, 1480, 730, "");
+        let mut display = MultilineOutput::new(10, 10, 1380, 630, "");
         display.set_text_font(Font::Courier);
         display.set_text_size(12);
 
@@ -248,7 +248,7 @@ fn process_files(console: Rc<RefCell<Console>>, files: Vec<PathBuf>) {
     let mut pis: f64 = 0_f64;
     let mut cofins: f64 = 0_f64;
 
-    console.borrow_mut().add_line("Analisando registro M210...".to_string());
+    console.borrow_mut().add_line("Analisando registro M210 (CST 01)...".to_string());
     for i in m210 {
         let proporcao = i.vl_rec_brt / vl_rec_brt;
         console.borrow_mut().add_line(format!("- Base de cálculo original: {:.2}", i.vl_bc_cont));
@@ -260,7 +260,7 @@ fn process_files(console: Rc<RefCell<Console>>, files: Vec<PathBuf>) {
         console.borrow_mut().add_line("\n".to_string());
     }
 
-    console.borrow_mut().add_line("Analisando registro M610...".to_string());
+    console.borrow_mut().add_line("Analisando registro M610 (CST 01)...".to_string());
     for i in m610 {
         let proporcao = i.vl_rec_brt / vl_rec_brt;
         console.borrow_mut().add_line(format!("- Base de cálculo original: {:.2}", i.vl_bc_cont));
@@ -280,11 +280,11 @@ fn process_files(console: Rc<RefCell<Console>>, files: Vec<PathBuf>) {
 
 fn main() {
     let app = App::default();
-    let mut wind = Window::new(100, 100, 1500, 800, "Tema 69 STF");
+    let mut wind = Window::new(100, 100, 1400, 700, "Tema 69 STF");
 
     let console = Rc::new(RefCell::new(Console::new()));
 
-    let mut upload_button = Button::new(1290, 750, 200, 40, "Adicionar Arquivo");
+    let mut upload_button = Button::new(1190, 650, 200, 40, "Adicionar Arquivo");
     upload_button.set_callback(move |_| {
         let mut dialog = FileDialog::new(FileDialogType::BrowseMultiFile);
         dialog.show();
