@@ -164,8 +164,12 @@ pub(crate) fn summarize(
                     }
                 }
 
+                "F100" => {
+                    // There is no documentation about how to implement that.
+                }
+
                 "C381" | "C385" | "C491" | "C495" | "C601" | "C605" | "C870" | "D201" | "D205"
-                | "D300" | "D350" | "D601" | "D605" | "F100" | "F500" | "F550" => {
+                | "D300" | "D350" | "D601" | "D605" | "F500" | "F550" => {
                     todo!("Registro {} não implantado", reg)
                 }
 

@@ -66,8 +66,19 @@ pub(crate) fn summarize(path: PathBuf) -> HashMap<(String, String, String), f64>
                     *value += vl_icms;
                 }
 
+                "D500" => cod_mod = r.get(5).unwrap().to_string(),
+
+                "D590" => {
+                    let cfop: String = r.get(3).unwrap().to_string();
+                    let vl_icms: f64 = to_f64(&r.get(7));
+
+                    let key = (cnpj.clone(), cod_mod.clone(), cfop);
+                    let value = summary.entry(key).or_insert(0_f64);
+                    *value += vl_icms;
+                }
+
                 "C320" | "C390" | "C690" | "C790" | "C850" | "C890" | "D190" | "D300" | "D390"
-                | "D410" | "D590" | "D690" | "D696" => {
+                | "D410" | "D690" | "D696" => {
                     todo!("Registro {} não implantado", reg)
                 }
 
